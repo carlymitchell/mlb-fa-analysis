@@ -28,11 +28,11 @@ def load_data(player_type, year):
 # Function to load additional datasets
 def load_additional_data(dataset_type):
     if dataset_type == 'ZiPs Hitters':
-        df = pd.read_csv('C:/Users/cmitchell/Desktop/dash/25_zips_hitters.csv', encoding='ISO-8859-1')  # Adjust this path
+        df = pd.read_csv('25_zips_hitters.csv', encoding='ISO-8859-1')  # Adjust this path
     elif dataset_type == 'ZiPs Pitchers':
-        df = pd.read_csv('C:/Users/cmitchell/Desktop/dash/25_zips_pitchers.csv', encoding='ISO-8859-1')  # Adjust this path
+        df = pd.read_csv('25_zips_pitchers.csv', encoding='ISO-8859-1')  # Adjust this path
     elif dataset_type == 'Contracts':
-        df = pd.read_csv('C:/Users/cmitchell/Desktop/dash/24_FA_contracts.csv', encoding='ISO-8859-1')  # Adjust this path
+        df = pd.read_csv('24_FA_contracts.csv', encoding='ISO-8859-1')  # Adjust this path
     else:
         raise ValueError(f"Unknown dataset type: {dataset_type}")
 
