@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 
-# Function to load data based on player type and year
+# Loading hitter/pitcher data
 def load_data(player_type, year):
     if player_type == 'Hitter':
         if year == '2024':
@@ -14,18 +14,18 @@ def load_data(player_type, year):
         else:
             df = pd.read_csv('pitchers_free_agents_career.csv', encoding='ISO-8859-1')  # Adjust this path
     
-    # Remove the playerid column, as it's not useful
+    # Removing playerid column
     if 'playerid' in df.columns:
         df = df.drop(columns=['playerid'])
     
-    # Clean AAV by removing commas and converting to numeric
+    # AAV -- removing commas & converting to numeric
     if 'AAV' in df.columns:
         df['AAV'] = df['AAV'].replace({',': ''}, regex=True)  # Remove commas
         df['AAV'] = pd.to_numeric(df['AAV'], errors='coerce')  # Convert to numeric
     
     return df
 
-# Function to load additional datasets
+# Loading 2025 ZIPS Projections
 def load_additional_data(dataset_type):
     if dataset_type == 'ZiPs Hitters':
         df = pd.read_csv('25_zips_hitters.csv', encoding='ISO-8859-1')  # Adjust this path
@@ -36,7 +36,7 @@ def load_additional_data(dataset_type):
     else:
         raise ValueError(f"Unknown dataset type: {dataset_type}")
 
-    # Clean numeric columns (like 'AAV' or 'WAR') if needed
+    # Clean numeric columns as needed
     if 'AAV' in df.columns:
         df['AAV'] = df['AAV'].replace({',': ''}, regex=True)  # Remove commas
         df['AAV'] = pd.to_numeric(df['AAV'], errors='coerce')  # Convert to numeric
@@ -46,10 +46,10 @@ def load_additional_data(dataset_type):
 
     return df
 
-# Title of the app
+# App Title
 st.title("MLB Free Agent Comparison Tool")
 
-# Text blurb explaining the app and data source
+# Introduction Blurb
 st.markdown("""
 Welcome to the MLB Free Agent Comparison Tool, a personal project by Carly Mitchell. 
 This app allows you to compare upcoming MLB free agents using data from the 2024 season, their career statistics, and simple projections based on those datasets.
@@ -57,18 +57,18 @@ You can select players, view various performance metrics, and analyze key stats 
 Data used in this app is sourced from publicly available MLB datasets via FanGraphs. Reach out with any questions - carlymbasebalL@gmail.com
 """)
 
-# Tabs for Home (All players), Hitters, Pitchers, and 2025 Projections
+# Tabs for Home
 tab1, tab2, tab3, tab4 = st.tabs(["Home", "Hitters", "Pitchers", "2025 Free Agent Projections"])
 
 # Home Tab - All Players
 with tab1:
     st.header("Compare All Players")
 
-    # Load both hitters and pitchers data for 2024 initially
+    # Loads both hitters and pitchers data for 2024 initially
     hitters_df = load_data('Hitter', '2024')
     pitchers_df = load_data('Pitcher', '2024')
 
-    # Combine position options from both hitters and pitchers
+    # Combines position options from both hitters and pitchers
     hitters_df['Position'] = hitters_df['Position'].str.split('/')  # Split multi-position players into lists
     all_positions_hitters = sorted(set(pos for sublist in hitters_df['Position'].dropna() for pos in sublist))
     pitcher_roles = ['SP', 'RP']  # Starter and Reliever roles
@@ -101,7 +101,7 @@ with tab1:
     if 'AAV' not in pitcher_stats and 'AAV' in pitchers_df.columns:
         pitcher_stats.append('AAV')
 
-    # Combine stats for hitters and pitchers, but label them clearly
+    # Combine stats for hitters and pitchers with clear labels
     all_available_stats = ['Hitters: ' + stat for stat in hitter_stats] + ['Pitchers: ' + stat for stat in pitcher_stats]
     selected_stats_all = st.multiselect("Select Stats to Compare", options=all_available_stats, key="stats_home")
 
@@ -222,38 +222,72 @@ with tab4:
     zips_pitchers = load_additional_data('ZiPs Pitchers')
     fa_contracts = load_additional_data('Contracts')
 
-    # Display ZiPs Hitters projections table
-    st.markdown("### 2025 ZiPs Projections - Hitters")
-    st.dataframe(zips_hitters[['Name', 'PA', 'WAR', 'HR', 'RBI', 'wRC+']], use_container_width=True)
+    # Select whether to view hitter or pitcher projections
+    player_type = st.selectbox("Select Player Type", options=["Hitter", "Pitcher"], key="player_type_projections")
 
-    # Display ZiPs Pitchers projections table
-    st.markdown("### 2025 ZiPs Projections - Pitchers")
-    st.dataframe(zips_pitchers[['Name', 'IP', 'WAR', 'ERA', 'FIP', 'K/9']], use_container_width=True)
+    # Based on selection, load the appropriate data
+    if player_type == "Hitter":
+        zips_data = zips_hitters
+        position_filter = ["1B", "2B", "3B", "SS", "LF", "CF", "RF", "C", "DH"]  # Common hitter positions
+        projection_columns = ['Name', 'PA', 'WAR', 'HR', 'RBI', 'wRC+']  # Add more relevant stats if needed
+    else:
+        zips_data = zips_pitchers
+        position_filter = ["SP", "RP"]  # Common pitcher roles
+        projection_columns = ['Name', 'IP', 'WAR', 'ERA', 'FIP', 'K/9']  # Add more relevant stats if needed
 
-    # Historical contract comparison
-    st.subheader("Historical Contracts Comparison (Recent Free Agents)")
-    st.markdown("Here are the median contract values (years and AAV) for recent free agents similar to the projected 2025 free agents.")
+    # Select player from the ZiPs data
+    selected_player = st.selectbox("Select Player to Project", options=zips_data['Name'].unique())
 
-    # Display historical contract data
-    st.dataframe(fa_contracts[['Name', 'Proj WAR', 'Med Years', 'Med Total', 'Med AAV', 'Signing Team']], use_container_width=True)
+    # Get selected player's ZiPs projections for 2025
+    player_projection = zips_data[zips_data['Name'] == selected_player]
 
-    # Add more interactivity by allowing users to select specific players to compare projections and historical contracts
-    selected_players = st.multiselect("Select Players to Compare", options=fa_contracts['Name'].unique(), key="players_comparison")
+    # Display player ZiPs projections in a dataframe
+    st.subheader(f"2025 ZiPs Projections for {selected_player}")
+    st.dataframe(player_projection[projection_columns], use_container_width=True)
 
-    # Filter data based on selected players
-    if selected_players:
-        selected_fa_contracts = fa_contracts[fa_contracts['Name'].isin(selected_players)]
-        selected_zips_hitters = zips_hitters[zips_hitters['Name'].isin(selected_players)]
-        selected_zips_pitchers = zips_pitchers[zips_pitchers['Name'].isin(selected_players)]
+    # Automatically retrieve projected WAR and Age from ZiPs
+    projected_war = player_projection['WAR'].values[0]
+    player_age = player_projection['Age'].values[0]  # Assuming 'Age' is a column in the zips data
 
-        # Display comparison
-        st.subheader("Selected Players: ZiPs Projections and Historical Contracts")
-        
-        st.markdown("#### ZiPs Projections - Hitters (Selected Players)")
-        st.dataframe(selected_zips_hitters[['Name', 'PA', 'WAR', 'HR', 'RBI', 'wRC+']], use_container_width=True)
+    # Heuristic for projecting contract length and AAV (can replace with regression model)
+    if projected_war >= 5:
+        projected_contract_years = 6  # Higher WAR, longer contract
+    elif projected_war >= 3:
+        projected_contract_years = 4  # Moderate WAR, medium-length contract
+    else:
+        projected_contract_years = 2  # Lower WAR, shorter contract
 
-        st.markdown("#### ZiPs Projections - Pitchers (Selected Players)")
-        st.dataframe(selected_zips_pitchers[['Name', 'IP', 'WAR', 'ERA', 'FIP', 'K/9']], use_container_width=True)
+    # Calculate AAV with a minimum value of $740,000
+    projected_aav = max(projected_war * 2.5, 0.74)  # Ensure AAV does not drop below $740,000
+    total_contract_value = projected_aav * projected_contract_years
 
-        st.markdown("#### Historical Contracts - Selected Players")
-        st.dataframe(selected_fa_contracts[['Name', 'Proj WAR', 'Med Years', 'Med Total', 'Med AAV', 'Signing Team']], use_container_width=True)
+    # Display the projected contract details
+    st.subheader(f"Contract Projection for {selected_player}")
+    st.markdown(f"**Projected WAR:** {projected_war}")
+    st.markdown(f"**Contract Length:** {projected_contract_years} years")
+    st.markdown(f"**AAV:** ${projected_aav:.2f} million")
+    st.markdown(f"**Total Value:** ${total_contract_value:.2f} million")
+
+    # Comparison with Historical Contracts
+    st.subheader("Compare with Similar 2024 Free Agents")
+
+    # Filter fa_contracts based on position, projected WAR, and age
+    similar_players = fa_contracts[
+        (fa_contracts['Position'].isin(position_filter)) & 
+        (fa_contracts['Proj WAR'].between(projected_war - 0.5, projected_war + 0.5)) &
+        (fa_contracts['Age'].between(player_age - 2, player_age + 2))  # Assuming 'Age' is a column in the fa_contracts data
+    ]
+
+    # Display the comparison
+    st.dataframe(similar_players[['Name', 'Proj WAR', 'Med Years', 'AAV', 'Signing Team', 'Age']])
+
+    # Ensure player projection AAV is included in the bar graph data
+    projected_data = pd.DataFrame({'Name': [selected_player], 'AAV': [projected_aav]})
+    historical_data = similar_players[['Name', 'AAV']].rename(columns={'AAV': 'AAV'})
+
+    # Combine the historical and projected data for comparison
+    comparison_data = pd.concat([historical_data, projected_data])
+
+    # Visualization: Projected AAV vs. Historical Contracts
+    st.subheader(f"Projected AAV for {selected_player} vs. Similar Free Agents")
+    st.bar_chart(comparison_data.set_index('Name'))
